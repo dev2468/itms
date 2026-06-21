@@ -1,0 +1,5 @@
+{
+  "name": "web copy for ITMS",
+  "description": "A constraint-based academic timetable generator with drag-and-drop validation for faculty and student schedules.",
+  "requestFramePermissions": []
+}

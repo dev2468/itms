@@ -1,0 +1,74 @@
+# ITMS Test Plan & Scenarios
+
+This document outlines scenarios to verify that the core timetable features and Role-Based Access Control (RBAC) are functioning correctly.
+
+## 1. Authentication & Session Management
+
+| ID | Scenario | Steps to Reproduce | Expected Result |
+| :--- | :--- | :--- | :--- |
+| AUTH-01 | Successful Login | 1. Navigate to `/login`<br>2. Enter valid credentials<br>3. Click Login | Redirects to `/` (Dashboard). Session context is populated with user profile and role. |
+| AUTH-02 | Invalid Login | 1. Navigate to `/login`<br>2. Enter invalid credentials<br>3. Click Login | Displays "Invalid login credentials" (or similar Supabase error). Remains on `/login`. |
+| AUTH-03 | Sign Up defaults to Student | 1. Navigate to `/login`<br>2. Switch to Sign Up<br>3. Create a new account | Account is created. The database trigger automatically assigns the `student` role in the `profiles` table. |
+| AUTH-04 | Protected Routes (Unauthenticated) | 1. Clear session data (Log out).<br>2. Attempt to navigate directly to `/project/123`. | Redirected back to `/login`. |
+| AUTH-05 | Sign Out | 1. Log in to the application.<br>2. Click 'Sign Out' on Dashboard. | Session is cleared. Redirected to `/login`. |
+
+---
+
+## 2. Role-Based Access Control (RBAC) - Dashboard
+
+Currently, the frontend uses role checks (e.g., `isSuperAdmin`, `isStudent`) to hide/show UI elements.
+
+| ID | Scenario | Role | Expected Result |
+| :--- | :--- | :--- | :--- |
+| RBAC-D-01 | View Global Constraints | **Super Admin** | "Global Constraints" button is visible and clickable. |
+| RBAC-D-02 | View Global Constraints | **Student, Faculty** | "Global Constraints" button is **hidden**. |
+| RBAC-D-03 | View Global Resources | **Super Admin** | "Global Resources" button is visible and navigates to `/resources`. |
+| RBAC-D-04 | View Global Resources | **Student** | "Global Resources" button is **hidden**. |
+| RBAC-D-05 | Create Project | **Super Admin, Dept Admin** | "New Project" button is visible. Can create a project. |
+| RBAC-D-06 | Create Project | **Student** | "New Project" button is **hidden**. |
+| RBAC-D-07 | Delete Project | **Super Admin, Dept Admin** | Trash/Delete icon is visible on project cards. Can delete project. |
+| RBAC-D-08 | Delete Project | **Student** | Trash/Delete icon is **hidden**. |
+
+---
+
+## 3. Role-Based Access Control (RBAC) - Project Scheduler
+
+| ID | Scenario | Role | Expected Result |
+| :--- | :--- | :--- | :--- |
+| RBAC-S-01 | Upload Excel File | **Super Admin, Dept Admin** | Upload icon is visible. Can import data successfully. |
+| RBAC-S-02 | Upload Excel File | **Student** | Upload icon is **hidden**. |
+| RBAC-S-03 | Auto-Schedule Button | **Super Admin, Dept Admin** | "Auto" button is visible. Clicking it triggers the scheduler engine. |
+| RBAC-S-04 | Auto-Schedule Button | **Student** | "Auto" button is **hidden**. |
+| RBAC-S-05 | Drag and Drop from Sidebar | **Super Admin, Faculty** | Unassigned items can be dragged from the Sidebar onto the Grid. |
+| RBAC-S-06 | Sidebar Visibility | **Student** | The entire unassigned Sidebar is **hidden**. |
+| RBAC-S-07 | Grid Interactivity (Drag/Drop/Pin) | **Super Admin, Faculty** | Existing grid items can be pinned/locked or dragged to other time slots. Empty slots show an "Add Class" hover hint. |
+| RBAC-S-08 | Grid Interactivity | **Student** | Grid is completely **read-only**. Items cannot be dragged. No lock icons. No hover hints to add classes. |
+| RBAC-S-09 | Room Configuration | **Super Admin, Dept Admin** | Settings gear icon is visible to configure rooms. |
+| RBAC-S-10 | Room Configuration | **Student** | Settings gear icon is **hidden**. |
+
+*(Note: Department Admin and Faculty backend specific data-filtering rules will need database RLS policies configured in the future).*
+
+---
+
+## 4. Core Timetable Features
+
+| ID | Scenario | Steps to Reproduce | Expected Result |
+| :--- | :--- | :--- | :--- |
+| CORE-01 | Custom Session Creation | 1. (As Admin) Click Add Session via Sidebar (+).<br>2. Fill out Course, Faculty, select Room.<br>3. Save. | Session appears in the Unassigned Sidebar ready to be dragged onto the grid. |
+| CORE-02 | Drag Constraint Validation (Conflict) | 1. Drag an unassigned session to a slot where the Faculty is already teaching.<br>2. Drop. | Toast error appears: "Faculty conflict". Session remains unassigned. |
+| CORE-03 | Auto-Schedule Execution | 1. Ensure Unassigned items exist.<br>2. Click "Auto". | Loading spinner appears. All/most items are placed on the grid without conflicts. Success toast shown. |
+| CORE-04 | Export to PDF | 1. Have a populated schedule.<br>2. Click PDF Export icon.<br>3. Wait. | A formatted PDF matching the current view (Faculty or Student) triggers a download prompt. |
+| CORE-05 | Persistent Storage | 1. Make changes to the schedule.<br>2. Refresh the browser. | The changes persist (currently via `localStorage`, later via Supabase). |
+| CORE-06 | View Switching | 1. Toggle between "Faculty View" and "Student View" using the header toggle.<br>2. Use the dropdowns to select specific batches/faculty. | The Timetable Grid accurately filters to show only the relevant entries for that selection. |
+
+---
+
+## Testing Instructions (For Local Development)
+
+Since we are currently utilizing the **Auth Bypass**, you can test the RBAC frontend states by modifying the hardcoded user role in `src/contexts/AuthContext.tsx`.
+
+1. Open `src/contexts/AuthContext.tsx`.
+2. Locate the `bypassProfile` definition.
+3. Change the `role` property from `'super_admin'` to `'student'`, `'faculty'`, or `'department_admin'`.
+4. Save the file and reload the application.
+5. Execute the relevant test scenarios assigned to that role.
